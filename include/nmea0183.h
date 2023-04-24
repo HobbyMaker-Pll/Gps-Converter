@@ -5,45 +5,47 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define MAX_FIELD_SIZE 10
-#define MAX_FIELDS_SIZE 20
+#define GGA_IDENTIFICATOR "GGA"
+#define DELIMITERS ","
 
-#define ZDA_FIELDS_SIZE 8
+#define MAX_INCOMINING_MESSAGE_SIZE 300
 
-typedef struct _nmea0183Type
-{ 
-    char* indentifier;
-    char** fields;
-    int fieldsSize;
-} nmea0183Type;
-
-typedef struct _nmea0183UTC
+typedef struct _nmea0183utc
 {
     int hour;
     int minute;
     int seconds;
-} nmea0183UTC;
+    int miliseconds;
+} Nmea0183utc;
 
-enum {
-    NEMA0183_STRING,
-    NMEA0183_INT,
-    NMEA0183_FLOAT,
-    NMEA0183_UTC
-};
+typedef struct _nmea0183date
+{
+    int day;
+    int month;
+    int year;
+} Nmea0183date;
 
-enum {
-    ZDA_ID,
-    ZDA_UTC,
-    ZDA_DAY,
-    ZDA_MONTH,
-    ZDA_YEAR,
-    ZDA_HOUR_OFFSET,
-    ZDA_MINUTE_OFFSET,
-    ZDA_CHECKSUM
-};
+typedef struct _gga
+{
+    Nmea0183utc time;
+    double latitude;
+    char latitudeDir;
+    double longitute;
+    char longitudeDir;
+    int gpsQuality;
+    int satelliteCount;
+    float hdop;
+    float orthometricHeight;
+    char orthometricHeightUnit;
+    float geoidSeparation;
+    char geoidSeparationUnit;
+    float ageOfDGPS;
+    int referenceStation;
+    char isReady;
+} ggaMessage;
 
-nmea0183UTC stringToUTC(char*);
-nmea0183Type* initNmea0183Type(char* identifier, int fieldsSize);
+void fillGGA(char* message, char* inParse);
+char handleIncomingNmea0183(char c);
 int validateMessage(char* msg);
 
 #endif
