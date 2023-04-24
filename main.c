@@ -1,41 +1,32 @@
 #include "include\main.h"
 
-#define MAX_LINE_SIZE 100
-#define MAX_FIELD_SIZE 20
-
 int main(char *arg, char **argv)
 {
     FILE *fp;
+    char c;
+    char ret;
 
-    nmea0183Type* zdaPackge;
-    zdaPackge = initNmea0183Type("ZDA", ZDA_FIELDS_SIZE);
-
-
-    char line[MAX_LINE_SIZE];
-    char *token;
-    char fields[MAX_FIELD_SIZE][MAX_LINE_SIZE];
-
+    // Opens file descriptor for nmea file
     fp = fopen("../resources/output.nmea", "r");
+
+    // checks if file descriptor has opened correctly
     if(fp == NULL) {
         printf("Error opening file\n");
         return 1;
     }
 
-    while(fgets(line, sizeof(line), fp) != NULL) {
-        token = strtok(line, ",*");
-        if(!validateMessage(line)) continue;
+    while (1)
+    {
+        c = fgetc(fp);
+        if (c == EOF) break;
 
-        int fieldCount = 0;
-        int isIdentifier = 0;
+        //parse each character to nmea handle method
+        ret = handleIncomingNmea0183(c); 
 
-        while(token != NULL) {
-            strcpy((fields[fieldCount]), token);
-            printf("%s", fields[fieldCount]);
-            token = strtok(NULL, ",*");
-            fieldCount++;
-        }
+        if(ret != 1) continue;
     }
-
+    
+    // closes file descriptor
     fclose(fp);
     return 0;
 }
