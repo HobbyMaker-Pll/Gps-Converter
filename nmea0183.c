@@ -1,7 +1,7 @@
 #include "include\nmea0183.h"
 
-
-char incomingMessage[MAX_INCOMINING_MESSAGE_SIZE];
+char** fields = NULL;
+int fieldsCount;
 
 ggaMessage ggaPackge;
 
@@ -19,10 +19,10 @@ void convertStringToUTC(char* s, Nmea0183utc* time)
 
 void fillGGA(char* message, char* inParse)
 {
-    char* field = strsep(&message, DELIMITERS);
+    char* field = NULL;
     convertStringToUTC(field, &(ggaPackge.time));
 
-    field = strsep(&message, DELIMITERS, &inParse);
+    //field = strsep(&message, DELIMITERS, &inParse);
     ggaPackge.latitude = strtod(field, NULL);
 
     field = strtok_r(inParse, DELIMITERS, &inParse);
@@ -64,21 +64,48 @@ void fillGGA(char* message, char* inParse)
 
 char handleIncomingNmea0183(char c)
 {
+    if (fieldsCount == 0)
+    {
+        fields = (char**) realloc(fields,sizeof(char*));
+        fields[0] = (char*) realloc(&(fields[0]), sizeof(char)); 
+        fields[0][0] = '\0';
+        fieldsCount++;
+    }
+    
     if( c != '\n')
     {
-        strncat(incomingMessage, &c, 1);
+        
+        if (c == ',' || c == '*')
+        {
+            
+            fields = (char**) realloc(fields, sizeof(char*)*(fieldsCount+1));
+
+            if(fields == NULL) {perror("fields not allocated"); exit(1);}
+
+            char* tmp = (char*) realloc(&(fields[fieldsCount]), sizeof(char));
+            fields[fieldsCount] = tmp; 
+            fields[fieldsCount][0] = '\0';
+
+            printf("%s\n", fields[fieldsCount]);
+            fieldsCount++;
+
+        } else {
+            fields[fieldsCount] = (char*) realloc(&(fields[fieldsCount]), sizeof(char)*(strlen(fields[fieldsCount])+2));
+            strncat(fields[fieldsCount], &c, 1);
+            printf("%s\n", fields[fieldsCount]);
+        }
         return 0;
     }
     
     else
     {
-        char* data = strdup(incomingMessage);
-        char* inParse = data;
-        char* identificator = strtok_r(inParse, DELIMITERS, &inParse);
+        // char* data = strdup(incomingMessage);
+        // char* inParse = data;
+        // char* identificator = strtok_r(inParse, DELIMITERS, &inParse);
 
-        if(strstr(identificator, GGA_IDENTIFICATOR) != NULL) fillGGA(data, inParse);
-        incomingMessage[0] = '\0';
-        return 1;
+        // if(strstr(identificator, GGA_IDENTIFICATOR) != NULL) fillGGA(data, inParse);
+        // incomingMessage[0] = '\0';
+        // return 1;
     }
 }
 
