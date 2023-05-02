@@ -1,8 +1,8 @@
 #include "include\nmea0183.h"
 
-char** fields = NULL;
-int fieldsCount;
-
+FieldsQueue* fields = NULL;
+int isCheckSum=0;
+int newMessage=0;
 ggaMessage ggaPackge;
 
 void convertStringToUTC(char* s, Nmea0183utc* time)
@@ -17,115 +17,185 @@ void convertStringToUTC(char* s, Nmea0183utc* time)
     );
 }
 
-void fillGGA(char* message, char* inParse)
+void fillGGA()
 {
-    char* field = NULL;
+    char* field = deQueue(fields);
     convertStringToUTC(field, &(ggaPackge.time));
+    free(field);
 
-    //field = strsep(&message, DELIMITERS, &inParse);
+    field = deQueue(fields);
     ggaPackge.latitude = strtod(field, NULL);
+    free(field);
 
-    field = strtok_r(inParse, DELIMITERS, &inParse);
+    field = deQueue(fields);
     ggaPackge.latitudeDir = *field;
+    free(field);
 
-    field = strtok_r(inParse, DELIMITERS, &inParse);
+    field = deQueue(fields);
     ggaPackge.longitute = strtod(field, NULL);
+    free(field);
 
-    field = strtok_r(inParse, DELIMITERS, &inParse);
+    field = deQueue(fields);
     ggaPackge.longitudeDir = *field;
 
-    field = strtok_r(inParse, DELIMITERS, &inParse);
+    field = deQueue(fields);
     ggaPackge.gpsQuality = atoi(field);
+    free(field);
 
-    field = strtok_r(inParse, DELIMITERS, &inParse);
+    field = deQueue(fields);
     ggaPackge.satelliteCount = atoi(field);
+    free(field);
 
-    field = strtok_r(inParse, DELIMITERS, &inParse);
+    field = deQueue(fields);
     ggaPackge.hdop = strtof(field, NULL);
+    free(field);
 
-    field = strtok_r(inParse, DELIMITERS, &inParse);
+    field = deQueue(fields);
     ggaPackge.orthometricHeight = strtof(field, NULL);
+    free(field);
 
-    field = strtok_r(inParse, DELIMITERS, &inParse);
+    field = deQueue(fields);
     ggaPackge.orthometricHeightUnit = *field;
+    free(field);
 
-    field = strtok_r(inParse, DELIMITERS, &inParse);
+    field = deQueue(fields);
     ggaPackge.geoidSeparation = strtof(field, NULL);
+    free(field);
 
-    field = strtok_r(inParse, DELIMITERS, &inParse);
+    field = deQueue(fields);
     ggaPackge.geoidSeparationUnit = *field;
+    free(field);
 
-    field = strtok_r(inParse, DELIMITERS, &inParse);
+    field = deQueue(fields);
     ggaPackge.ageOfDGPS = strtof(field, NULL);
+    free(field);
 
-    field = strtok_r(inParse, DELIMITERS, &inParse);
+    field = deQueue(fields);
     ggaPackge.referenceStation = atoi(field);
+    free(field);
+
 }
 
-char handleIncomingNmea0183(char c)
+FieldsQueue* initFieldsQueue()
 {
-    if (fieldsCount == 0)
+    FieldsQueue* tmp = (FieldsQueue*) malloc(sizeof(FieldsQueue));
+    tmp->top = NULL;
+    tmp->bottom = NULL;
+    tmp->curField = NULL;
+    tmp->queueLen = 0;
+    return tmp;
+}
+
+void inQueue(FieldsQueue* queue, char* field)
+{
+    LinkedFields* new = (LinkedFields*) malloc(sizeof(LinkedFields));
+    new->field = field;
+    new->next = NULL;
+    
+    if(fields->bottom != NULL)
+        fields->bottom->next = new;
+    
+    fields->bottom = new;
+
+    if(fields->top == NULL)
+        fields->top=fields->bottom;
+
+    queue->queueLen++;
+}
+
+char* deQueue(FieldsQueue* queue)
+{
+    if(queue->top == NULL) return NULL;
+
+    char* field = malloc(sizeof(queue->top->field));
+    *field = '\0';
+    strcpy(field, queue->top->field);
+
+    LinkedFields* aux = queue->top->next;
+
+    free(queue->top->field);
+    free(queue->top);
+
+    queue->top = aux;
+
+    if (queue->top == NULL) queue->bottom = NULL;
+
+    queue->queueLen--;
+
+    return field;
+}
+
+void freeQueue(FieldsQueue* queue)
+{
+    LinkedFields* aux = queue->top;
+    LinkedFields* aux2 = NULL;
+    while (aux != NULL)
     {
-        fields = (char**) realloc(fields,sizeof(char*));
-        fields[0] = (char*) realloc(&(fields[0]), sizeof(char)); 
-        fields[0][0] = '\0';
-        fieldsCount++;
+        aux2 = aux;
+        aux = aux->next;
+        free(aux2->field);
+        free(aux2);
+    }
+    free(queue->curField);
+    free(queue);
+}
+
+char handleIncomingNmea0183(char c, int size)
+{
+    if(fields == NULL) fields = initFieldsQueue();
+
+    if(fields->curField == NULL) 
+    {
+        fields->curField = (char*) malloc(sizeof(char));
+        *(fields->curField) = '\0';
     }
     
     if( c != '\n')
     {
-        
-        if (c == ',' || c == '*')
+
+        if (c == ',' || c == '*') // Closing Field
         {
+            printf("%s\n", fields->curField);
+            inQueue(fields, fields->curField);
+            fields->curField = NULL;
+            if (c == '*') isCheckSum = 1;
+
+        } else { // Normal Character
             
-            fields = (char**) realloc(fields, sizeof(char*)*(fieldsCount+1));
-
-            if(fields == NULL) {perror("fields not allocated"); exit(1);}
-
-            char* tmp = (char*) realloc(&(fields[fieldsCount]), sizeof(char));
-            fields[fieldsCount] = tmp; 
-            fields[fieldsCount][0] = '\0';
-
-            printf("%s\n", fields[fieldsCount]);
-            fieldsCount++;
-
-        } else {
-            fields[fieldsCount] = (char*) realloc(&(fields[fieldsCount]), sizeof(char)*(strlen(fields[fieldsCount])+2));
-            strncat(fields[fieldsCount], &c, 1);
-            printf("%s\n", fields[fieldsCount]);
+            fields->curField = (char*) realloc(fields->curField, (sizeof(char) * (strlen(fields->curField)+2) ));
+            strncat(fields->curField, &c, size);
         }
         return 0;
     }
-    
     else
     {
-        // char* data = strdup(incomingMessage);
-        // char* inParse = data;
-        // char* identificator = strtok_r(inParse, DELIMITERS, &inParse);
+        if(strstr(deQueue(fields), GGA_IDENTIFICATOR) != NULL) fillGGA();
 
-        // if(strstr(identificator, GGA_IDENTIFICATOR) != NULL) fillGGA(data, inParse);
-        // incomingMessage[0] = '\0';
-        // return 1;
+        freeQueue(fields);
+        fields = NULL;
+        return 1;
     }
+
+    return 0;
 }
 
-int validateMessage(char* msg)
+int validateMessage(LinkedFields* field)
 {
-    int i, checksum = 0;
+    // int i, checksum = 0;
 
-    // Calculate checksum
-    for (i = 1; i < strlen(msg) - 3; i++) {
-        checksum ^= msg[i];
-    }
+    // // Calculate checksum
+    // for (i = 1; i < strlen(msg) - 3; i++) {
+    //     checksum ^= msg[i];
+    // }
 
-    // Convert checksum to hexadecimal
-    int checksum_hex;
-    sscanf(&msg[strlen(msg) - 2], "%x", &checksum_hex);
+    // // Convert checksum to hexadecimal
+    // int checksum_hex;
+    // sscanf(&msg[strlen(msg) - 2], "%x", &checksum_hex);
 
-    // Compare calculated checksum with the one in the sentence
-    if (checksum == checksum_hex) {
-        return 1; // Checksum OK
-    } else {
-        return 0; // Checksum error
-    }
+    // // Compare calculated checksum with the one in the sentence
+    // if (checksum == checksum_hex) {
+    //     return 1; // Checksum OK
+    // } else {
+    //     return 0; // Checksum error
+    // }
 }

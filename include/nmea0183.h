@@ -6,9 +6,25 @@
 #include <string.h>
 
 #define GGA_IDENTIFICATOR "GGA"
+#define GGA_SIZE 15
 #define DELIMITERS ","
 
-#define MAX_INCOMINING_MESSAGE_SIZE 300
+#define MAX_FIELD_SIZE 100
+
+typedef struct field
+{
+    char* field;
+    struct field* next;
+} LinkedFields;
+
+typedef struct _fieldsQueue
+{
+    LinkedFields* top;
+    LinkedFields* bottom;
+    char* curField;
+    size_t queueLen;
+} FieldsQueue;
+
 
 typedef struct _nmea0183utc
 {
@@ -41,11 +57,12 @@ typedef struct _gga
     char geoidSeparationUnit;
     float ageOfDGPS;
     int referenceStation;
-    char isReady;
+    int isReady;
 } ggaMessage;
 
-void fillGGA(char* message, char* inParse);
-char handleIncomingNmea0183(char c);
+void fillGGA();
+char handleIncomingNmea0183(char c, int size);
 int validateMessage(char* msg);
+char* deQueue(FieldsQueue* queue);
 
 #endif
