@@ -1,4 +1,7 @@
-#include "include\main.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include "nmea0183.h"
 
 int main(char *arg, char **argv)
 {
@@ -21,7 +24,7 @@ int main(char *arg, char **argv)
         if (c == EOF) break;
 
         //parse each character to nmea handle method
-        ret = handleIncomingNmea0183(c); 
+        ret = handleIncomingNmea0183(&c, 1); 
 
         if(ret != 1) continue;
     }

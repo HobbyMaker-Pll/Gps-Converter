@@ -4,8 +4,11 @@ project(GpsConverter VERSION 0.1.0)
 include(CTest)
 enable_testing()
 
-add_executable(GpsConverter main.c nmea0183.c)
+include_directories(${CMAKE_SOURCE_DIR}/include)
+aux_source_directory(${CMAKE_CURRENT_SOURCE_DIR}/source SOURCES)
+
+add_executable(GpsConverter ${SOURCES})
 
 set(CPACK_PROJECT_NAME ${PROJECT_NAME})
-set(CPACK_PROJECT_VERSION ${PROJECT_VERSION})
+set(CPACK_PROJECT_VERSION ${SOURCES})
 include(CPack)
